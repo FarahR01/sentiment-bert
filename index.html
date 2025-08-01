@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Sentiment Analysis NLP System</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #04050d;
+    --surface: #0c0e1a;
+    --card: #10132b;
+    --border: rgba(99,102,241,0.18);
+    --accent: #6366f1;
+    --accent2: #22d3ee;
+    --accent3: #f472b6;
+    --positive: #34d399;
+    --negative: #f87171;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --glow: rgba(99,102,241,0.25);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── GRID BG ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(99,102,241,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(99,102,241,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+
+  /* ── GLOW ORBS ── */
+  .orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.15;
+    pointer-events: none;
+  }
+  .orb-1 { width: 500px; height: 500px; background: var(--accent); top: -150px; left: -100px; animation: drift 12s ease-in-out infinite alternate; }
+  .orb-2 { width: 400px; height: 400px; background: var(--accent2); bottom: -100px; right: -80px; animation: drift 15s ease-in-out infinite alternate-reverse; }
+  .orb-3 { width: 300px; height: 300px; background: var(--accent3); top: 40%; left: 50%; animation: drift 10s ease-in-out infinite alternate; }
+
+  @keyframes drift { from { transform: translate(0,0) scale(1); } to { transform: translate(30px,20px) scale(1.05); } }
+
+  /* ── WRAPPER ── */
+  .page { max-width: 1100px; margin: 0 auto; padding: 60px 24px 80px; position: relative; }
+
+  /* ── HEADER ── */
+  .hero {
+    text-align: center;
+    margin-bottom: 64px;
+    animation: fadeUp 0.8s ease both;
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(99,102,241,0.12);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 6px 16px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+  .hero-badge span { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: blink 1.5s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+  .hero h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(36px, 5vw, 64px);
+    font-weight: 800;
+    line-height: 1.05;
+    background: linear-gradient(135deg, #e2e8f0 0%, #6366f1 40%, #22d3ee 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 16px;
+  }
+  .hero p {
+    color: var(--muted);
+    font-size: 16px;
+    max-width: 560px;
+    margin: 0 auto;
+    line-height: 1.7;
+  }
+
+  /* ── SECTION LABEL ── */
+  .sec-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .sec-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* ── STATS ROW ── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 48px;
+    animation: fadeUp 0.8s 0.1s ease both;
+  }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s, border-color 0.2s;
+  }
+  .stat-card:hover { transform: translateY(-3px); border-color: var(--accent); }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .stat-card:hover::before { opacity: 1; }
+  .stat-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 32px;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* ── PIPELINE ── */
+  .pipeline-section { margin-bottom: 56px; animation: fadeUp 0.8s 0.2s ease both; }
+
+  .pipeline-flow {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+
+  .pipe-step {
+    flex: 1;
+    min-width: 110px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 0;
+    padding: 20px 14px;
+    text-align: center;
+    position: relative;
+    transition: background 0.2s;
+  }
+  .pipe-step:first-child { border-radius: 16px 0 0 16px; }
+  .pipe-step:last-child  { border-radius: 0 16px 16px 0; }
+  .pipe-step:hover { background: rgba(99,102,241,0.1); }
+
+  .pipe-step + .pipe-step::before {
+    content: '›';
+    position: absolute;
+    left: -10px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 20px;
+    color: var(--accent);
+    z-index: 1;
+    background: var(--card);
+    width: 20px;
+    text-align: center;
+  }
+
+  .pipe-icon {
+    font-size: 22px;
+    margin-bottom: 8px;
+    display: block;
+  }
+  .pipe-name {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--accent2);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    display: block;
+    margin-bottom: 4px;
+  }
+  .pipe-desc { font-size: 11px; color: var(--muted); line-height: 1.4; }
+
+  /* ── TWO COL ── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 48px; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px;
+    animation: fadeUp 0.8s 0.3s ease both;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: rgba(99,102,241,0.35); }
+  .card h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  /* ── SENTIMENT DEMO ── */
+  .sentiment-examples { display: flex; flex-direction: column; gap: 12px; }
+  .sent-item {
+    background: rgba(255,255,255,0.03);
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-left: 3px solid transparent;
+    font-size: 13px;
+    transition: transform 0.2s;
+  }
+  .sent-item:hover { transform: translateX(4px); }
+  .sent-item.pos { border-color: var(--positive); }
+  .sent-item.neg { border-color: var(--negative); }
+  .sent-badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 3px 8px;
+    border-radius: 100px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .sent-badge.pos { background: rgba(52,211,153,0.15); color: var(--positive); }
+  .sent-badge.neg { background: rgba(248,113,113,0.15); color: var(--negative); }
+  .sent-conf {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    margin-left: auto;
+    white-space: nowrap;
+  }
+
+  /* ── METRICS ── */
+  .metrics-list { display: flex; flex-direction: column; gap: 14px; }
+  .metric-row { display: flex; flex-direction: column; gap: 6px; }
+  .metric-header { display: flex; justify-content: space-between; font-size: 12px; }
+  .metric-name { color: var(--muted); }
+  .metric-val { font-family: 'Space Mono', monospace; color: var(--text); font-size: 11px; }
+  .metric-bar { height: 6px; background: rgba(255,255,255,0.06); border-radius: 100px; overflow: hidden; }
+  .metric-fill { height: 100%; border-radius: 100px; transition: width 1s ease; }
+
+  /* ── BERT BLOCK ── */
+  .bert-visual {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+  }
+  .bert-input {
+    background: rgba(99,102,241,0.08);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--accent2);
+    width: 100%;
+    text-align: center;
+  }
+  .bert-arrow { color: var(--accent); font-size: 18px; }
+  .bert-layers {
+    display: flex;
+    gap: 6px;
+    width: 100%;
+  }
+  .bert-layer {
+    flex: 1;
+    background: linear-gradient(180deg, rgba(99,102,241,0.3) 0%, rgba(99,102,241,0.05) 100%);
+    border: 1px solid rgba(99,102,241,0.2);
+    border-radius: 8px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 8px;
+    color: var(--accent);
+    text-align: center;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  .bert-layer:nth-child(2) { animation-delay: 0.2s; }
+  .bert-layer:nth-child(3) { animation-delay: 0.4s; }
+  .bert-layer:nth-child(4) { animation-delay: 0.6s; }
+  .bert-layer:nth-child(5) { animation-delay: 0.8s; }
+  .bert-layer:nth-child(6) { animation-delay: 1.0s; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+  .bert-output {
+    background: rgba(52,211,153,0.1);
+    border: 1px solid rgba(52,211,153,0.25);
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--positive);
+    width: 100%;
+    text-align: center;
+  }
+
+  /* ── TECH STACK ── */
+  .tech-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tech-chip {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 6px 14px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text);
+    letter-spacing: 0.05em;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .tech-chip:hover { background: rgba(99,102,241,0.12); border-color: var(--accent); }
+  .tech-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ── API BOX ── */
+  .api-block {
+    background: #070910;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    line-height: 1.8;
+    overflow-x: auto;
+  }
+  .api-method { color: #f472b6; }
+  .api-path   { color: var(--accent2); }
+  .api-key    { color: #fbbf24; }
+  .api-val    { color: var(--positive); }
+  .api-brace  { color: var(--muted); }
+  .api-comment { color: #475569; }
+
+  /* ── ROADMAP ── */
+  .roadmap { display: flex; flex-direction: column; gap: 12px; }
+  .road-item {
+    display: flex; gap: 14px; align-items: flex-start;
+    padding: 14px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    transition: background 0.2s;
+  }
+  .road-item:hover { background: rgba(99,102,241,0.06); }
+  .road-icon { font-size: 18px; flex-shrink: 0; margin-top: 2px; }
+  .road-title { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+  .road-desc { font-size: 11px; color: var(--muted); line-height: 1.5; }
+
+  /* ── FULL-WIDTH CARD ── */
+  .full-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 32px;
+    margin-bottom: 48px;
+    animation: fadeUp 0.8s 0.4s ease both;
+  }
+  .full-card h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  /* ── FOOTER ── */
+  .footer {
+    text-align: center;
+    border-top: 1px solid var(--border);
+    padding-top: 40px;
+    animation: fadeUp 0.8s 0.5s ease both;
+  }
+  .footer-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .footer-sub { color: var(--muted); font-size: 13px; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (max-width: 700px) {
+    .stats-row { grid-template-columns: repeat(2,1fr); }
+    .two-col { grid-template-columns: 1fr; }
+    .bert-layers { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+
+<div class="page">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-badge"><span></span> Production NLP System</div>
+    <h1>Sentiment Analysis<br/>with BERT</h1>
+    <p>A full-lifecycle Machine Learning Engineering project — from raw text to containerized REST API, powered by transformer-based deep learning.</p>
+  </div>
+
+  <!-- STATS -->
+  <div class="sec-label">Key Metrics</div>
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-num">≥0.91</div>
+      <div class="stat-label">F1 Score (Validation)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">25K</div>
+      <div class="stat-label">Training Samples (IMDB)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">3e-5</div>
+      <div class="stat-label">Optimal Learning Rate</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">10</div>
+      <div class="stat-label">Pipeline Phases</div>
+    </div>
+  </div>
+
+  <!-- PIPELINE -->
+  <div class="pipeline-section">
+    <div class="sec-label">End-to-End Pipeline</div>
+    <div class="pipeline-flow">
+      <div class="pipe-step">
+        <span class="pipe-icon">📦</span>
+        <span class="pipe-name">Data</span>
+        <span class="pipe-desc">IMDB dataset ingestion & labeling</span>
+      </div>
+      <div class="pipe-step">
+        <span class="pipe-icon">🔤</span>
+        <span class="pipe-name">Tokenize</span>
+        <span class="pipe-desc">BERT WordPiece tokenizer → IDs</span>
+      </div>
+      <div class="pipe-step">
+        <span class="pipe-icon">🧠</span>
+        <span class="pipe-name">Fine-Tune</span>
+        <span class="pipe-desc">BERT-base-uncased, 3 epochs</span>
+      </div>
+      <div class="pipe-step">
+        <span class="pipe-icon">📊</span>
+        <span class="pipe-name">Evaluate</span>
+        <span class="pipe-desc">F1, confusion matrix, error analysis</span>
+      </div>
+      <div class="pipe-step">
+        <span class="pipe-icon">🔭</span>
+        <span class="pipe-name">Track</span>
+        <span class="pipe-desc">W&B experiment logging</span>
+      </div>
+      <div class="pipe-step">
+        <span class="pipe-icon">⚡</span>
+        <span class="pipe-name">API</span>
+        <span class="pipe-desc">FastAPI REST endpoint</span>
+      </div>
+      <div class="pipe-step">
+        <span class="pipe-icon">🐳</span>
+        <span class="pipe-name">Deploy</span>
+        <span class="pipe-desc">Docker containerization</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TWO COL: SENTIMENT DEMO + METRICS -->
+  <div class="two-col">
+    <div class="card">
+      <h3>💬 Live Inference Demo</h3>
+      <div class="sentiment-examples">
+        <div class="sent-item pos">
+          <span class="sent-badge pos">Positive</span>
+          "This movie was absolutely amazing!"
+          <span class="sent-conf">0.97</span>
+        </div>
+        <div class="sent-item neg">
+          <span class="sent-badge neg">Negative</span>
+          "Complete waste of time, awful plot."
+          <span class="sent-conf">0.94</span>
+        </div>
+        <div class="sent-item pos">
+          <span class="sent-badge pos">Positive</span>
+          "A masterpiece of modern cinema."
+          <span class="sent-conf">0.92</span>
+        </div>
+        <div class="sent-item neg">
+          <span class="sent-badge neg">Negative</span>
+          "Terrible acting, poor direction."
+          <span class="sent-conf">0.91</span>
+        </div>
+        <div class="sent-item neg" style="opacity:0.6; border-left-color: #fbbf24;">
+          <span class="sent-badge" style="background:rgba(251,191,36,0.15);color:#fbbf24;">⚠ Sarcasm</span>
+          "Oh great, another boring movie."
+          <span class="sent-conf" style="color:#fbbf24;">0.61</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>📈 Performance Metrics</h3>
+      <div class="metrics-list">
+        <div class="metric-row">
+          <div class="metric-header">
+            <span class="metric-name">Validation F1-Score</span>
+            <span class="metric-val">0.91</span>
+          </div>
+          <div class="metric-bar"><div class="metric-fill" style="width:91%;background:linear-gradient(90deg,#6366f1,#22d3ee)"></div></div>
+        </div>
+        <div class="metric-row">
+          <div class="metric-header">
+            <span class="metric-name">Training F1-Score</span>
+            <span class="metric-val">0.98</span>
+          </div>
+          <div class="metric-bar"><div class="metric-fill" style="width:98%;background:linear-gradient(90deg,#6366f1,#22d3ee)"></div></div>
+        </div>
+        <div class="metric-row">
+          <div class="metric-header">
+            <span class="metric-name">Training Loss</span>
+            <span class="metric-val">0.05</span>
+          </div>
+          <div class="metric-bar"><div class="metric-fill" style="width:5%;background:linear-gradient(90deg,#34d399,#22d3ee)"></div></div>
+        </div>
+        <div class="metric-row">
+          <div class="metric-header">
+            <span class="metric-name">Validation Loss</span>
+            <span class="metric-val">0.21</span>
+          </div>
+          <div class="metric-bar"><div class="metric-fill" style="width:21%;background:linear-gradient(90deg,#fbbf24,#f472b6)"></div></div>
+        </div>
+        <div class="metric-row">
+          <div class="metric-header">
+            <span class="metric-name">Target F1 Goal Achieved</span>
+            <span class="metric-val" style="color:var(--positive)">✓ ≥ 0.90</span>
+          </div>
+          <div class="metric-bar"><div class="metric-fill" style="width:100%;background:linear-gradient(90deg,#34d399,#6366f1)"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TWO COL: BERT + API -->
+  <div class="two-col" style="animation: fadeUp 0.8s 0.35s ease both;">
+    <div class="card">
+      <h3>🤖 BERT Architecture</h3>
+      <div class="bert-visual">
+        <div class="bert-input">"I love this movie" → [1045, 2293, 2023, 3185]</div>
+        <div class="bert-arrow">↓ Transformer Encoding</div>
+        <div class="bert-layers">
+          <div class="bert-layer">Attn<br/>L1</div>
+          <div class="bert-layer">Attn<br/>L2</div>
+          <div class="bert-layer">Attn<br/>L3</div>
+          <div class="bert-layer">Attn<br/>L4</div>
+          <div class="bert-layer">Attn<br/>L5</div>
+          <div class="bert-layer">Attn<br/>L6</div>
+        </div>
+        <div class="bert-arrow">↓ Classification Head</div>
+        <div class="bert-output">sentiment: "positive" · confidence: 0.97</div>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin-top:14px;line-height:1.6;">BERT's bidirectional self-attention captures full sentence context — crucial for negations like <em style="color:var(--accent2)">"did not like"</em> and sarcasm detection.</p>
+    </div>
+
+    <div class="card">
+      <h3>🔌 REST API Endpoint</h3>
+      <div class="api-block">
+        <div><span class="api-method">POST</span> <span class="api-path">/predict</span></div>
+        <div style="margin-top:10px"><span class="api-brace">{</span></div>
+        <div>&nbsp;&nbsp;<span class="api-key">"text"</span>: <span class="api-val">"This movie was amazing"</span></div>
+        <div><span class="api-brace">}</span></div>
+        <div style="margin-top:10px;color:#475569">── Response ──────────────</div>
+        <div><span class="api-brace">{</span></div>
+        <div>&nbsp;&nbsp;<span class="api-key">"sentiment"</span>: <span class="api-val">"positive"</span>,</div>
+        <div>&nbsp;&nbsp;<span class="api-key">"confidence"</span>: <span class="api-val">0.92</span></div>
+        <div><span class="api-brace">}</span></div>
+      </div>
+      <div style="margin-top:14px;font-size:11px;color:var(--muted);line-height:1.6;">
+        Served via <strong style="color:var(--text)">FastAPI</strong> for high-performance async inference. Auto-generated docs via OpenAPI. Containerized in <strong style="color:var(--text)">Docker</strong> for portable deployment.
+      </div>
+    </div>
+  </div>
+
+  <!-- TECH STACK -->
+  <div class="full-card">
+    <h3>🛠 Technology Stack</h3>
+    <div class="tech-grid">
+      <div class="tech-chip"><div class="tech-dot" style="background:#6366f1"></div>PyTorch</div>
+      <div class="tech-chip"><div class="tech-dot" style="background:#fbbf24"></div>HuggingFace Transformers</div>
+      <div class="tech-chip"><div class="tech-dot" style="background:#22d3ee"></div>BERT-base-uncased</div>
+      <div class="tech-chip"><div class="tech-dot" style="background:#34d399"></div>FastAPI</div>
+      <div class="tech-chip"><div class="tech-dot" style="background:#60a5fa"></div>Docker</div>
+      <div class="tech-chip"><div class="tech-dot" style="background:#f472b6"></div>Weights & Biases</div>
+      <div class="tech-chip"><div class="tech-dot" style="background:#a78bfa"></div>ONNX (planned)</div>
+      <div class="tech-chip"><div class="tech-dot" style="background:#fb923c"></div>IMDB Dataset</div>
+      <div class="tech-chip"><div class="tech-dot" style="background:#94a3b8"></div>Python 3.10+</div>
+      <div class="tech-chip"><div class="tech-dot" style="background:#4ade80"></div>GitHub Actions (CI/CD)</div>
+    </div>
+  </div>
+
+  <!-- ROADMAP -->
+  <div class="sec-label">Future Roadmap</div>
+  <div class="full-card" style="animation: fadeUp 0.8s 0.45s ease both; margin-bottom: 56px;">
+    <div class="roadmap">
+      <div class="road-item">
+        <div class="road-icon">🚀</div>
+        <div>
+          <div class="road-title">CI/CD Pipeline</div>
+          <div class="road-desc">Automated testing, Docker builds & deployment via GitHub Actions for continuous delivery.</div>
+        </div>
+      </div>
+      <div class="road-item">
+        <div class="road-icon">⚡</div>
+        <div>
+          <div class="road-title">ONNX / TensorRT Optimization</div>
+          <div class="road-desc">Convert model to ONNX for hardware-accelerated inference — expected 2–5× speed improvement.</div>
+        </div>
+      </div>
+      <div class="road-item">
+        <div class="road-icon">☁️</div>
+        <div>
+          <div class="road-title">Cloud Deployment</div>
+          <div class="road-desc">Deploy on AWS / GCP / Azure with API gateway, GPU inference instances, and auto-scaling.</div>
+        </div>
+      </div>
+      <div class="road-item">
+        <div class="road-icon">🎭</div>
+        <div>
+          <div class="road-title">Sarcasm & Irony Robustness</div>
+          <div class="road-desc">Expand training data with sarcastic examples to reduce the primary error pattern identified during analysis.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="footer-title">Production-Ready ML Engineering</div>
+    <div class="footer-sub">Data Engineering · Model Training · Experiment Tracking · API Serving · Containerized Deployment</div>
+  </div>
+
+</div>
+</body>
+</html>

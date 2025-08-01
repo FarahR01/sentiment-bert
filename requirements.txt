@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+torch
+transformers
+pydantic-settings
+python-dotenv
+pandas
+scikit-learn
+wandb
+onnx
+onnxruntime-gpu
+numpy

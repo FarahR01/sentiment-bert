@@ -1,0 +1,19 @@
+name: sentiment-bert
+channels:
+  - pytorch
+  - conda-forge
+dependencies:
+  - python=3.10.12
+  - pytorch=2.10.0
+  - cudatoolkit=13.0
+  - pip
+  - pip:
+      - fastapi
+      - uvicorn
+      - transformers==4.31.0
+      - pydantic-settings
+      - python-dotenv
+      - scikit-learn
+      - wandb
+      - onnx
+      - onnxruntime-gpu
